@@ -10,15 +10,15 @@
 <meta property="og:locale" content="en_US" />
 <meta name="description" content="Optimizing Terraform projects with Terragrunt and a Terraform Registry" />
 <meta property="og:description" content="Optimizing Terraform projects with Terragrunt and a Terraform Registry" />
-<link rel="canonical" href="https://davoodharun.github.io/personal-blog/2022/06/29/Optimizing-Your-Terraform-Projects.html" />
-<meta property="og:url" content="https://davoodharun.github.io/personal-blog/2022/06/29/Optimizing-Your-Terraform-Projects.html" />
+<link rel="canonical" href="https://davoodharun.github.io/personal-blog/infrastructure-as-code/2022/06/29/Optimizing-Your-Terraform-Projects.html" />
+<meta property="og:url" content="https://davoodharun.github.io/personal-blog/infrastructure-as-code/2022/06/29/Optimizing-Your-Terraform-Projects.html" />
 <meta property="og:site_name" content="fastpages" />
 <meta property="og:type" content="article" />
 <meta property="article:published_time" content="2022-06-29T00:00:00-05:00" />
 <meta name="twitter:card" content="summary" />
 <meta property="twitter:title" content="Optimizing Your Terraform Projects" />
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-06-29T00:00:00-05:00","datePublished":"2022-06-29T00:00:00-05:00","description":"Optimizing Terraform projects with Terragrunt and a Terraform Registry","headline":"Optimizing Your Terraform Projects","mainEntityOfPage":{"@type":"WebPage","@id":"https://davoodharun.github.io/personal-blog/2022/06/29/Optimizing-Your-Terraform-Projects.html"},"url":"https://davoodharun.github.io/personal-blog/2022/06/29/Optimizing-Your-Terraform-Projects.html"}</script>
+{"@context":"https://schema.org","@type":"BlogPosting","dateModified":"2022-06-29T00:00:00-05:00","datePublished":"2022-06-29T00:00:00-05:00","description":"Optimizing Terraform projects with Terragrunt and a Terraform Registry","headline":"Optimizing Your Terraform Projects","mainEntityOfPage":{"@type":"WebPage","@id":"https://davoodharun.github.io/personal-blog/infrastructure-as-code/2022/06/29/Optimizing-Your-Terraform-Projects.html"},"url":"https://davoodharun.github.io/personal-blog/infrastructure-as-code/2022/06/29/Optimizing-Your-Terraform-Projects.html"}</script>
 <!-- End Jekyll SEO tag -->
 <link rel="stylesheet" href="/personal-blog/assets/css/style.css"><link type="application/atom+xml" rel="alternate" href="https://davoodharun.github.io/personal-blog/feed.xml" title="fastpages" /><link rel="shortcut icon" type="image/x-icon" href="/personal-blog/images/favicon.ico"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Primer/15.2.0/primer.css" integrity="sha512-xTz2ys4coGAOz8vuV1NcQBkgVmKhsSEtjbqyMJbBHRplFuvKIUo6xhLHpAyPt9mfR6twHJgn9OgVLuqOvjeBhg==" crossorigin="anonymous" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.14.0/css/all.min.css" integrity="sha512-1PKOgIY59xJ8Co8+NE6FZ+LOAZKjy+KY8iq0G4B3CyeY6wYHN3yt9PW0XpSriVlkMXe40PTKnXrLnZ9+fkDaog==" crossorigin="anonymous" />
@@ -79,10 +79,17 @@ window.onload = wrap_img;
        • <span class="read-time" title="Estimated read time">
     
     
-      8 min read
+      9 min read
     
 </span></p>
 
+    
+      <p class="category-tags"><i class="fas fa-tags category-tags-icon"></i></i> 
+      
+        <a class="category-tags-link" href="/personal-blog/categories/#infrastructure-as-code">infrastructure-as-code</a>
+        
+      
+      </p>
     
 
     </header>
@@ -163,7 +170,7 @@ window.onload = wrap_img;
 
 <ul>
   <li>
-    <p>each tier has <em>*six applications*</em> for different areas of the United states</p>
+    <p>each tier has <em>*six applications*</em> for different areas of the United States</p>
   </li>
   <li>
     <p><em>*Each application*</em> has a web server, a redis cache, app service plan, a storage account, and a key vault access policy to access a central key store</p>
@@ -182,11 +189,7 @@ window.onload = wrap_img;
 
 <p>This is great, but it caused us a few problems when scaling out our process. The process we used initially allowed developers to create their own terraform modules specific to their application which utilized either local or shared modules in our private registry. One of the major problems came when trying to apply these modules in a continuous integration pipeline. Each project had their own unique terraform project and their own configurations that our continuous deployment pipeline needed to adhere to.</p>
 
-<p>Sharing of variables files for infrastructure settings</p>
-
-<p>Application settings</p>
-
-<p>This is a little tangent, but a cool feature terraform offers. You can define template files that can dynamically populate specific variables with information from terraform tied to your cloud resources.</p>
+<p>Let’s consider the naming convention of an application. Usually, you would want the same named prefix on your resources (or apply it as a resource tag) to visually identify what projects the resources belong to. Since we had to maintain multiple tiers of environments for these projects (dev, test, stage, prod), we wanted to share this variable that across environments, only having to declare it once. We also wanted to declare specific variables, and override them on specific environments. With the Terraform CLI, there is no way to merge inputs, and share variables across environments.</p>
 
 <p>So, instead of trying to conform our deployment pipelines to fit all the terraform projects and environments we had to maintain, we started to wonder if there was a better way to organize ourselves. This is where Terragrunt comes into play.</p>
 
@@ -217,6 +220,10 @@ window.onload = wrap_img;
   </li>
 </ul>
 
+<p>Application settings</p>
+
+<p>This is a little tangent, but a cool feature terraform offers. You can define template files that can dynamically populate specific variables with information from terraform tied to your cloud resources.</p>
+
 <p><strong>## Features</strong></p>
 
 <p><strong>### Remote State Configurations</strong></p>
@@ -227,7 +234,7 @@ window.onload = wrap_img;
 
 <p><strong># Working with Terraform</strong></p>
 
-  </div><a class="u-url" href="/personal-blog/2022/06/29/Optimizing-Your-Terraform-Projects.html" hidden></a>
+  </div><a class="u-url" href="/personal-blog/infrastructure-as-code/2022/06/29/Optimizing-Your-Terraform-Projects.html" hidden></a>
 </article>
 
       </div>
