@@ -1,3 +1,7 @@
+---
+title: "My Title"
+categories: [fastpages, jupyter]
+---
 # Optimizing Terraform projects with Terragrunt and a Terraform Registry
 
 ## Intro
