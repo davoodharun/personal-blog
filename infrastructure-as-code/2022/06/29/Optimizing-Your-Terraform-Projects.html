@@ -103,17 +103,17 @@ window.onload = wrap_img;
 
 <p>Terraform, by Hashicorp, is an infrastructure as code tool that lets you define both cloud and on-prem resources using human-readable configuration files that you can version, reuse, and share across your various projects and development teams.</p>
 
-<p>This post will focus on several methods and patterns to take Terraform even further, specifically focusing on keeping your infrastructure code and configurations organized and easy to maintain. As a result, this post assumes you’ve worked with Terraform before and have a general understanding of how to use it and how it works. If you want to know more about Terraform and what it can offer, take a look at Hashicorp’s <a href="https://www.terraform.io/language/settings">website</a>. Also check out this <a href="https://www.youtube.com/watch?v=h970ZBgKINg">video</a> by Hashicorp’s cofounder for a short summary of what Terraform can offer.</p>
+<p>This post will focus on several methods and patterns to make the most out of your terraform code, specifically focusing on keeping your infrastructure code and configurations organized and easy to maintain; we will strive to implement <a href="https://en.wikipedia.org/wiki/Don%27t_repeat_yourself">DRY</a> principles wherever possible. As a result, this post assumes you’ve worked with Terraform before and have a general understanding of how to use it and how it works. If you want to know more about Terraform and what it can offer, take a look at Hashicorp’s <a href="https://www.terraform.io/language/settings">website</a>. Also check out this <a href="https://www.youtube.com/watch?v=h970ZBgKINg">video</a> by Hashicorp’s cofounder for a short summary of what Terraform can offer.</p>
 
 <h2 id="modularization--terraform-registry">Modularization &amp; Terraform Registry</h2>
 
-<p>Terraform has a few different offerings that each provide different features - the most basic of which is open source, the Terraform CLI. Although Terraform CLI is a great tool on its own, it is significantly more useful when best practices are implemented.</p>
+<p>Terraform has a few different offerings that each provide different features - the most basic of which is open source, the <a href="https://www.terraform.io/cli">Terraform CLI.</a> Although Terraform CLI is a great tool on its own, it is significantly more useful when best practices are implemented.</p>
 
-<p>One of the very first things you should do to organize your Terraform code is to modularize it by breaking it apart into child modules or components that encapsulate smaller pieces of your infrastructure; instead of having one main.tf file that provisions all of your resource types, break up your architecture into several components (i.e. appservice plan, appservice, storage account, redis cache) and reference them in your encapsulating module (ex. main.tf).</p>
+<p>One of the very first things you should do to organize your Terraform code is to break it apart into child modules or components that encapsulate smaller pieces of your infrastructure; instead of having one module file that provisions all of your resources, break up your architecture into several components (i.e. appservice plan, appservice, storage account, redis cache) and reference them as dependencies in your encapsulating module (ex. main.tf).</p>
 
 <p>Hashicorp also gives you access to their public Terraform registry for various providers like AWS and Azure. The public registry already has re-usable modules for the simplest cloud resource blocks for you to extend and utilize.</p>
 
-<p>However, although these pre-defined modules exist, to standardize things like resource naming conventions, cloud computing sizing/scaling, and other restrictions you may want to impose on your development teams, you should create your own modules that utilize modules in the public Terraform Registry and create them with distinctly defined inputs and outputs.</p>
+<p>However, although these pre-defined modules exist, to standardize things like resource naming conventions, cloud computing sizing/scaling, and other restrictions you may want to impose on your development teams, you should create your own modules that utilize modules in the public Terraform Registry and create them with distinctly defined validation parameters for input variables.</p>
 
 <p>Now the question arises: where do I keep the code for my child modules so that they are easily distributable, re-usable, and maintainable? Creating these child modules and storing the code within the application code repository itself creates some disadvantages. What if you want to re-use these sub modules for other repositories or different projects? You’d have to duplicate the child module code and track it in several places. Not ideal.</p>
 
@@ -158,7 +158,7 @@ window.onload = wrap_img;
 
 <p>One of the major concepts of Terraform is how it tracks the state of your infrastructure with a state file. In Terraform, you need to define a “remote state” for each grouping of infrastructure you are trying to deploy/provision. This remote state could be stored an S3 bucket or an Azure Storage account, Terraform Cloud, or another applicable service. This is how Terraform knows where to track the state of your infrastructure to determine if any changes need to be applied or if the configuration has drifted away from baseline that is defined in your source code. The organization of your state files is very important, especially if you are managing it yourself and not using Terraform Cloud to perform your infrastructure runs yet.</p>
 
-<p>In addition, you must keep in mind that when your development teams and applications grow, you will frequently need to manage development, testing, quality assurance, and production environments for several projects/components simultaneously.</p>
+<p>In addition, you must keep in mind that when your development teams and applications grow, you will frequently need to manage multiple development, testing, quality assurance, and production environments for several projects/components simultaneously; the number of configurations, variable files, cli arguments, and provider information will become untenable over time.</p>
 
 <p>How do you maintain all this infrastructure reliably? Do you track all the applications for one tier in one state file? Or do you break them up and track them separately?</p>
 
@@ -195,30 +195,19 @@ window.onload = wrap_img;
 
 <p>Initially, our team decided to use the Terraform CLI and to track our state files using an Azure Storage Account. Within the application repository, we would store several <strong>backend.tf</strong> files alongside our terraform code for each tier and pass them dynamically to <strong>terraform init –backend-config=&lt;PATH&gt;</strong>. We also passed variable files dynamically to <strong>terraform plan –var-file=&lt;PATH&gt;</strong> to combine common and tier specific application setting template files. We adopted this process in our continuous deployment pipeline by ensuring the necessary authentication principals and terraform cli packages were available on our deployment agents and then running the appropriate constructed terraform command in the appropriate directory on that agent.</p>
 
-<p>This is great, but it caused us a few problems when scaling out our process. The process we used initially allowed developers to create their own terraform modules specific to their application which utilized either local or shared modules in our private registry. One of the major problems came when trying to apply these modules in a continuous integration pipeline. Each project had their own unique terraform project and their own configurations that our continuous deployment pipeline needed to adhere to.</p>
+<p>This is great, but it presented a few problems when scaling out our process. The process we used initially allowed developers to create their own terraform modules specific to their application which utilized either local or shared modules in our private registry. One of the major problems came when trying to apply these modules in a continuous integration pipeline. Each project had their own unique terraform project and their own configurations that our continuous deployment pipeline needed to adhere to.</p>
 
-<p>Let’s consider the naming convention of an application. Usually, you would want the same named prefix on your resources (or apply it as a resource tag) to visually identify what projects the resources belong to. Since we had to maintain multiple tiers of environments for these projects (dev, test, stage, prod), we wanted to share this variable that across environments, only having to declare it once. We also wanted to declare specific variables and override them on specific environments. With the Terraform CLI, there is no way to merge inputs, and share variables across environments.</p>
+<p>Let’s consider the naming convention of an application. Usually, you would want the same named prefix on your resources (or apply it as a resource tag) to visually identify what projects the resources belong to. Since we had to maintain multiple tiers of environments for these projects (dev, test, stage, prod), we wanted to share this variable that across environments, only needing to declare it once. We also wanted to declare other variables and optionally override them on specific environments. With the Terraform CLI, there is no way to merge inputs, and share variables across environments. In addition, you cannot use expressions, functions, or variables in the terraform remote state configuration blocks, forcing you to either hardcode your configuration, or apply it dynamically through the cli; see this <a href="https://github.com/hashicorp/terraform/issues/13022">issue</a>.</p>
 
-<p>So, instead of trying to conform our deployment pipelines to fit all the terraform projects and environments we had to maintain, we started to wonder if there was a better way to organize ourselves. This is where Terragrunt comes into play.</p>
+<p>We began to wonder if there was a better way to organize ourselves. This is where Terragrunt comes into play. Instead of having to keep track of the various terraform commands, remote state configurations, variable files, and input parameters we needed to consolidate to provision our terraform projects, what if we had a declarative way of defining how our terraform project was configured?</p>
 
-<p>Instead of having to keep track of the various terraform commands, remote state configurations, variable files, and input parameters we needed to consolidate to run our project within our deployment pipeline (in addition to local runs), what if we had a declarative way of defining how our terraform project is configured?</p>
+<p>Terragrunt is a minimal wrapper around Terraform that allows you to dynamically assign and inherit remote state configurations, provider information, local variables, and module inputs for your terraform projects through a hierarchal folder structure with declarative configuration files. It also gives you a flexible and unopinionated way of consolidating everything Terraform does before it runs a command; every option you pass to terraform can be specifically configured through a configuration file that inherits, merges, or overrides components from other higher-level configuration files.</p>
 
-<p>Terragrunt is a minimal wrapper around Terraform that enables you to create a hierarchal folder structure with declarative configuration files that allow you to dynamically assign and inherit remote state configurations, provider information, local variables, and module inputs for your terraform projects. It also gives you a flexible and unopinionated way of consolidating everything Terraform does before it runs a command; every option you pass to terraform can be specifically configured through a configuration file that inherits, merges, or overrides components from other higher-level configuration files.</p>
-
-<p>Terragrunt allowed us to primarily do these important things:</p>
+<p>Terragrunt allowed us to do these important things:</p>
 
 <ul>
   <li>
-    <p>Define a configuration file that tells terraform what application setting template file to apply to an application; we used <strong>.tpl</strong> files to apply application settings to our Azure compute resources</p>
-  </li>
-  <li>
-    <p>Define a configuration file that tells terraform what variable files to include in your terraform commands</p>
-  </li>
-  <li>
     <p>Define a configuration file to tell what remote state file to save based on application/tier (using folder structure)</p>
-  </li>
-  <li>
-    <p>Allowed us to merge common input variables with tier specific input variables with desired precedence; this cut down</p>
   </li>
   <li>
     <p>Allowed us to run multiple terraform projects at once with a single command</p>
@@ -227,32 +216,43 @@ window.onload = wrap_img;
     <p>Pass outputs from one terraform project to another using a dependency chain</p>
   </li>
   <li>
+    <p>Define a configuration file that tells terraform what application setting template file to apply to an application; we used <strong>.tpl</strong> files to apply application settings to our Azure compute resources</p>
+  </li>
+  <li>
+    <p>Define a configuration file that tells terraform what variable files to include in your terraform commands</p>
+  </li>
+  <li>
+    <p>Allowed us to merge common input variables with tier specific input variables with desired precedence</p>
+  </li>
+  <li>
     <p>Allowed us to consistently name and create state files</p>
   </li>
 </ul>
 
-<p>I’ve posted an example project that depicts this type of setup. Let’s consider the situation where we want to maintain the infrastructure for a system with two major parts, an API, and a database solution. The requirements and scenario described above may not pertain to you, but it should give you a good idea of what you can accomplish with Terragrunt and the benefits it provides in the context of keeping your Terraform code organized. Also keep in mind that Terragrunt is unopinionated and allows you to configure it in several ways to accomplish similar results; we will only cover a few of the benefits Terragrunt provides, but be sure to check out their <a href="https://terragrunt.gruntwork.io/docs">documentation site</a> for more information.</p>
+<p>Let’s consider the situation where we want to maintain the infrastructure for a system with two major components: an API, and a database solution. You also need to deploy dev, test, stage, and production environments for this system. Dev and Test environments are deployed to one region while stage and production environments are deployed to two regions.</p>
+
+<p>To demonstrate how we might handle something like this with Terragrunt, we’ve created a preconfigured sample <a href="https://github.com/davoodharun/terragrunt-template">repository</a>. Now, although the requirements and scenario described above may not pertain to you, the preconfigured sample repository should give you a good idea of what you can accomplish with Terragrunt and the benefits it provides in the context of keeping your Terraform code organized. Also keep in mind that Terragrunt is unopinionated and allows you to configure it in several ways to accomplish similar results; we will only cover a few of the benefits Terragrunt provides, but be sure to check out their <a href="https://terragrunt.gruntwork.io/docs">documentation site</a> for more information.</p>
 
 <p>To get the most out of the code sample, you should have the following:</p>
 
 <ul>
   <li>
-    <p>Terraform</p>
+    <p><a href="https://www.terraform.io/downloads">Terraform CLI</a></p>
   </li>
   <li>
-    <p>Terragrunt</p>
+    <p><a href="https://terragrunt.gruntwork.io/docs/getting-started/install/">Terragrunt CLI</a></p>
   </li>
   <li>
-    <p>An Azure Subscription</p>
+    <p><a href="https://azure.microsoft.com/en-us/">An Azure Subscription</a></p>
   </li>
   <li>
-    <p>AZ CLI</p>
+    <p><a href="https://docs.microsoft.com/en-us/cli/azure/">AZ CLI</a></p>
   </li>
 </ul>
 
-<p>Run through the setup steps if you need to.</p>
+<p>Run through the setup steps if you need to. This will involve running a mini terraform project to provision a few resource groups in addition to a storage account to store your terraform state files.</p>
 
-<p>We created several top level directories in this example:</p>
+<p>The sample repo contains several top-level directories:</p>
 
 <ul>
   <li>
@@ -300,7 +300,7 @@ window.onload = wrap_img;
 
 <p>One thing that I immediately noticed about writing Terraform code, is that you can’t use variables, expressions, or functions within the <a href="https://www.terraform.io/language/settings#terraform-block-syntax">terraform configuration block</a>. You can override specific parts of this configuration through the command line, but there was no way to do this from code.</p>
 
-<p>Terragrunt allows you to keep your backend and remote state configuration DRY by allowing you to share the code for backend configuration across multiple environments. Look at the <strong>/_base_modules/api/api.hcl</strong> file in addition to the <strong>/dev/Terragrunt.hcl</strong> file.</p>
+<p>Terragrunt allows you to keep your backend and remote state configuration DRY by allowing you to share the code for backend configuration across multiple environments. Look at the <strong>/_base_modules/global.hcl</strong> file in addition to the <strong>/dev/Terragrunt.hcl</strong> file.</p>
 
 <blockquote>
   <p>/_base_modules/global.hcl:</p>
@@ -384,7 +384,7 @@ window.onload = wrap_img;
 
 <p>The include statement above tells Terragrunt to merge the configuration file found at <strong>_base_modules/global.hcl</strong> with its own local configuration. The <strong>${path_relative_to_include}</strong> is a predefined variable that will return the relative path of the calling .hcl file, in this case /dev/api/terragrunt.hcl. Therefore, the resulting state file for this module would be in the example container at dev/api.tfstate. For the sql application in the dev environment, the resulting state file would be dev/sql.tfstate; look at the _base_modules/sql/sql.hcl file. For the api application in the test environment, the resulting state file would be test/api.tfstate.</p>
 
-<p>Using Terragrunt, we only define the details of the remote state once, allowing you to cut down on code repetition. Read more about the <a href="https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state">remote_state</a> and <a href="https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include">include</a> blocks and how you can configure them by visiting the <a href="https://terragrunt.gruntwork.io/docs">Terragrunt documentation</a>. Pay special attention to merge strategy options, how you can override includes in child modules, and the specific limitations configuration inheritance in Terragrunt .</p>
+<p>Using Terragrunt, we only define the details of the remote state once, allowing you to cut down on code repetition. Read more about the <a href="https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#remote_state">remote_state</a> and <a href="https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#include">include</a> blocks and how you can configure them by visiting the <a href="https://terragrunt.gruntwork.io/docs">Terragrunt documentation</a>. Pay special attention to merge strategy options, how you can override includes in child modules, and the specific limitations configuration inheritance in Terragrunt.</p>
 
 <h3 id="keeping-your-terraform-configuration-dry">Keeping your Terraform Configuration DRY</h3>
 
@@ -416,7 +416,7 @@ window.onload = wrap_img;
 
 <p>You’ll notice this is referencing a local path; alternatively, you can also set this to use a module from a <a href="https://terragrunt.gruntwork.io/docs/reference/config-blocks-and-attributes/#terraform">remote git repo or terraform registry</a>.</p>
 
-<p>This is then imported as a configuration into each environment folder for the api application type:</p>
+<p>The <strong>api.hcl</strong> configuration is then imported as a configuration into each environment folder for the api application type:</p>
 
 <p>include “env” {</p>
 
@@ -522,7 +522,51 @@ window.onload = wrap_img;
 
 <p>}</p>
 
-<p>All of these configurations are included in the environment configuration files and would result in something like</p>
+<p>All configurations are included in the environment configuration files with:</p>
+
+<p>include “global” {</p>
+
+<p>  path = “${get_terragrunt_dir()}/../../_base_modules/global.hcl”</p>
+
+<p>  expose = true</p>
+
+<p>  merge_strategy = “deep”</p>
+
+<p>}</p>
+
+<p>include “api” {</p>
+
+<p>  path = “${get_terragrunt_dir()}/../../_base_modules/api/api.hcl”</p>
+
+<p>  expose = true</p>
+
+<p>  merge_strategy = “deep”</p>
+
+<p>}</p>
+
+<p>include “dev” {</p>
+
+<p>  path = “../dev.hcl”</p>
+
+<p>  expose = true</p>
+
+<p>  merge_strategy = “deep”</p>
+
+<p>}</p>
+
+<p>dependency “sql” {</p>
+
+<p>  config_path = “../sql”</p>
+
+<p>    mock_outputs = {</p>
+
+<p>    database_id = “temporary-dummy-id”</p>
+
+<p>  }</p>
+
+<p>}</p>
+
+<p>would result in something like:</p>
 
 <p>inputs = {</p>
 
@@ -532,7 +576,7 @@ window.onload = wrap_img;
 
 <p>secondary = “DEV” </p>
 
-<p>type = “SQL”</p>
+<p>type = “API”</p>
 
 <p>    }</p>
 
